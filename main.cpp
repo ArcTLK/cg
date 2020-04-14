@@ -39,8 +39,8 @@ void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 void insertCoordinates(float xpos, float ypos, bool temporary = false);
 
 // global constants
-const unsigned int SCR_WIDTH = 1366;
-const unsigned int SCR_HEIGHT = 768;
+unsigned int SCR_WIDTH = 640;
+unsigned int SCR_HEIGHT = 360;
 
 // global variables
 DrawMode drawMode = DrawMode::none;
@@ -58,7 +58,8 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // creating a window
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Computer Graphics Simulator", glfwGetPrimaryMonitor(), NULL);
+    //GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Computer Graphics Simulator", glfwGetPrimaryMonitor(), NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Computer Graphics Simulator", NULL, NULL);
     if (window == NULL) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -122,9 +123,6 @@ int main() {
         // draw
         glUseProgram(shaderProgram);
 
-        glBindVertexArray(VAO[1]);
-        glDrawArrays(GL_LINES, 0, (polygonCoordinates.size() / 3) + 2);
-
         if (drawMode == DrawMode::line) {
             glBindVertexArray(VAO[0]);
             glDrawArrays(GL_LINES, 0, (linesCoordinates.size() / 3) + 2);
@@ -135,8 +133,8 @@ int main() {
         }
 
         // swap buffers and poll IO events
-        glfwSwapBuffers(window);
         glfwPollEvents();
+        glfwSwapBuffers(window);
     }
     // terminate, unallocating resources
     glfwTerminate();
@@ -145,6 +143,8 @@ int main() {
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
+    SCR_WIDTH = width;
+    SCR_HEIGHT = height;
 }
 
 void processInput(GLFWwindow* window) {
@@ -200,26 +200,11 @@ void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
         if (polygonCoordinates.size() > polygonIndexes.back()) {
             // add coordinates temporarily
             insertCoordinates((float)xpos, (float)ypos, true);
-            // draw line
-            //float* vertices = &polygonCoordinates[0];
-            //glBufferData(GL_ARRAY_BUFFER, sizeof(float) * polygonCoordinates.size(), vertices, GL_DYNAMIC_DRAW);
-            //glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-            //glEnableVertexAttribArray(0);
-
-            // remove temporary coordinates
         }
     }
 }
 
 void insertCoordinates(float xpos, float ypos, bool temporary) {
-    /*
-    glm::vec4 vec(xpos, ypos, 0.0f, 1.0f);
-    glm::mat4 trans = glm::ortho(0.0f, (float)SCR_WIDTH, 0.0f, (float)SCR_HEIGHT, 0.1f, 10.0f);
-    vec = vec * trans;
-    coordinates.push_back(vec.x);
-    coordinates.push_back(vec.y);
-    coordinates.push_back(vec.z);
-    */
     if (drawMode == DrawMode::line) {
         linesCoordinates.push_back((2.0f / (float)SCR_WIDTH) * xpos - 1);
         // taking the negative of the coordinate to flip Y-axis
@@ -230,17 +215,18 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
         float xValue = (2.0f / (float)SCR_WIDTH) * xpos - 1;
         float yValue = -((2.0f / (float)SCR_HEIGHT) * ypos - 1);
 
-        if (!temporary) {
-            // check if inserted point is in vicinity of first point also check this only if at least one point is present in polygon
-            if (polygonCoordinates.size() > polygonIndexes.back() && abs(xValue - polygonCoordinates[polygonIndexes.back()]) < 0.05f && abs(yValue - polygonCoordinates[polygonIndexes.back() + 1]) < 0.05f) {
+        if (temporary) {
+            if (polygonCoordinates.size() > polygonIndexes.back() + 3 && abs(xValue - polygonCoordinates[polygonIndexes.back()]) < 0.05f && abs(yValue - polygonCoordinates[polygonIndexes.back() + 1]) < 0.05f) {
+                polygonCoordinates.push_back(polygonCoordinates[polygonCoordinates.size() - 3]);
+                // taking the negative of the coordinate to flip Y-axis
+                polygonCoordinates.push_back(polygonCoordinates[polygonCoordinates.size() - 3]);
+                polygonCoordinates.push_back(0.0f);
                 polygonCoordinates.push_back(polygonCoordinates[polygonIndexes.back()]);
                 // taking the negative of the coordinate to flip Y-axis
                 polygonCoordinates.push_back(polygonCoordinates[polygonIndexes.back() + 1]);
                 polygonCoordinates.push_back(0.0f);
-                polygonIndexes.push_back(polygonCoordinates.size());
             }
-            else if (polygonCoordinates.size() > polygonIndexes.back()) {
-                // add previous
+            else {
                 if (polygonCoordinates.size() > polygonIndexes.back() + 3) {
                     polygonCoordinates.push_back(polygonCoordinates[polygonCoordinates.size() - 3]);
                     // taking the negative of the coordinate to flip Y-axis
@@ -252,42 +238,58 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
                 polygonCoordinates.push_back(yValue);
                 polygonCoordinates.push_back(0.0f);
             }
-            else {
+        }
+        else {
+            if ((polygonCoordinates.size() - polygonIndexes.back()) % 6 == 3) {
                 polygonCoordinates.push_back(xValue);
                 // taking the negative of the coordinate to flip Y-axis
                 polygonCoordinates.push_back(yValue);
                 polygonCoordinates.push_back(0.0f);
             }
+            else {
+                if (polygonCoordinates.size() > polygonIndexes.back() + 3 && abs(xValue - polygonCoordinates[polygonIndexes.back()]) < 0.05f && abs(yValue - polygonCoordinates[polygonIndexes.back() + 1]) < 0.05f) {
+                    polygonCoordinates.push_back(polygonCoordinates[polygonCoordinates.size() - 3]);
+                    // taking the negative of the coordinate to flip Y-axis
+                    polygonCoordinates.push_back(polygonCoordinates[polygonCoordinates.size() - 3]);
+                    polygonCoordinates.push_back(0.0f);
+                    polygonCoordinates.push_back(polygonCoordinates[polygonIndexes.back()]);
+                    // taking the negative of the coordinate to flip Y-axis
+                    polygonCoordinates.push_back(polygonCoordinates[polygonIndexes.back() + 1]);
+                    polygonCoordinates.push_back(0.0f);
+                    polygonIndexes.push_back(polygonCoordinates.size());
+                }
+                else {
+                    if (polygonCoordinates.size() > polygonIndexes.back() + 3) {
+                        polygonCoordinates.push_back(polygonCoordinates[polygonCoordinates.size() - 3]);
+                        // taking the negative of the coordinate to flip Y-axis
+                        polygonCoordinates.push_back(polygonCoordinates[polygonCoordinates.size() - 3]);
+                        polygonCoordinates.push_back(0.0f);
+                    }
+                    polygonCoordinates.push_back(xValue);
+                    // taking the negative of the coordinate to flip Y-axis
+                    polygonCoordinates.push_back(yValue);
+                    polygonCoordinates.push_back(0.0f);
+                }
+            }
         }
-        else {
-            polygonCoordinates.push_back(polygonCoordinates[polygonCoordinates.size() - 3]);
-            // taking the negative of the coordinate to flip Y-axis
-            polygonCoordinates.push_back(polygonCoordinates[polygonCoordinates.size() - 3]);
-            polygonCoordinates.push_back(0.0f);
-            polygonCoordinates.push_back(xValue);
-            // taking the negative of the coordinate to flip Y-axis
-            polygonCoordinates.push_back(yValue);
-            polygonCoordinates.push_back(0.0f);
-        }
-        int j = 0;
-        for (auto i = polygonCoordinates.begin(); i != polygonCoordinates.end(); ++i, ++j) {
-            if (j % 3 == 0) printf("\n");
-            printf("%f ", *i);
-        }
-        printf("\n");
+
+        // draw lines
         if (polygonCoordinates.size() > polygonIndexes.back() + 3) {
-            float *vertices = &polygonCoordinates[0];
+            float* vertices = &polygonCoordinates[0];
             glBufferData(GL_ARRAY_BUFFER, sizeof(float) * polygonCoordinates.size(), vertices, GL_DYNAMIC_DRAW);
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
             glEnableVertexAttribArray(0);
         }
+
         if (temporary) {
             polygonCoordinates.pop_back();
             polygonCoordinates.pop_back();
             polygonCoordinates.pop_back();
-            polygonCoordinates.pop_back();
-            polygonCoordinates.pop_back();
-            polygonCoordinates.pop_back();
+            if (polygonCoordinates.size() > polygonIndexes.back() + 3) {
+                polygonCoordinates.pop_back();
+                polygonCoordinates.pop_back();
+                polygonCoordinates.pop_back();
+            }
         }
     }
 }
