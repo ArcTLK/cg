@@ -25,3 +25,7 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void clearCoordinates();
 void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 void insertCoordinates(float xpos, float ypos, bool temporary = false);
+void characterCallback(GLFWwindow* window, unsigned int codepoint);
+void clearCharacterBuffer();
+void processTransformation();
+void refreshBuffer();

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <algorithm>
 #include <math.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -20,9 +21,12 @@ std::vector<float> linesCoordinates;
 std::vector<float> polygonCoordinates;
 std::vector<int> polygonIndexes = { 0 };
 std::vector<float> transformationWindowCoordinates;
+std::vector<char> keyboardInput = { '\0' };
 
 unsigned int VBO[3], VAO[3];
 unsigned int vertexShader, fragmentShader, shaderProgram;
+
+bool listenForKeyboardInput = false;
 
 int main() {
     // GLFW initialization
@@ -53,6 +57,9 @@ int main() {
     glfwSetCursor(window, cursor);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
     glfwSetCursorPosCallback(window, cursorPositionCallback);
+
+    // keyboard
+    glfwSetCharCallback(window, characterCallback);
 
     // initialize vertex buffer object
     for (int i = 0; i < sizeof(VBO) / sizeof(unsigned int); ++i) {
@@ -134,19 +141,38 @@ void processKeyboardInput(GLFWwindow* window) {
         clearCoordinates();
     }
     else if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) {
+        refreshBuffer();
         drawMode = DrawMode::line;
     }
     else if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
+        refreshBuffer();
         drawMode = DrawMode::polygon;
     }
     else if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) {
+        refreshBuffer();
         transformation = Transformation::translation;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
+        refreshBuffer();
+        transformation = Transformation::reflectionX;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) {
+        refreshBuffer();
+        transformation = Transformation::reflectionY;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) {
+        refreshBuffer();
+        transformation = Transformation::reflectionOrigin;
     }
     else if (glfwGetKey(window, GLFW_KEY_END) == GLFW_PRESS) {
         transformation = Transformation::none;
         transformationWindowCoordinates.clear();
-        glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
-        glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
+        refreshBuffer();
+    }
+    else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
+        printf("%s", keyboardInput.data());
+        listenForKeyboardInput = false;
+        clearCharacterBuffer();
     }
 }
 
@@ -169,6 +195,34 @@ void clearCoordinates() {
         glBindBuffer(GL_ARRAY_BUFFER, VBO[i]);
         glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
     }
+}
+
+void refreshBuffer() {
+    // make sure coordinates are always even
+    if (linesCoordinates.size() % 6 == 3) {
+        linesCoordinates.pop_back();
+        linesCoordinates.pop_back();
+        linesCoordinates.pop_back();
+    }
+    if (polygonCoordinates.size() != polygonIndexes.back()) {
+        while (polygonCoordinates.size() != polygonIndexes.back()) {
+            polygonCoordinates.pop_back();
+        }
+    }
+
+    // clean
+    /*
+    if (linesCoordinates.size() > 0) {
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
+        glBufferData(GL_ARRAY_BUFFER, 0, &linesCoordinates[0], GL_STATIC_DRAW);
+    }
+    if (polygonCoordinates.size() > 0) {
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
+        glBufferData(GL_ARRAY_BUFFER, 0, &polygonCoordinates[0], GL_STATIC_DRAW);
+    }
+    */
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
+    glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
 }
 
 void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
@@ -216,6 +270,16 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
             transformationWindowCoordinates.push_back(transformationWindowCoordinates[transformationWindowCoordinates.size() - 9]);
             transformationWindowCoordinates.push_back(yValue);
             transformationWindowCoordinates.push_back(0.0f);
+
+            if (!temporary) {
+                if (transformation == Transformation::translation) {
+                    // listen to keyboard input
+                    listenForKeyboardInput = true;
+                }
+                else {
+                    processTransformation();
+                }
+            }
         }
         // draw
         if (transformationWindowCoordinates.size() % 6 == 0) {
@@ -319,5 +383,81 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
                 polygonCoordinates.pop_back();
             }
         }
+    }
+}
+
+void characterCallback(GLFWwindow* window, unsigned int codepoint) {
+    if (listenForKeyboardInput) {
+        keyboardInput.insert(--keyboardInput.end(), (char)codepoint);
+    }
+}
+
+void clearCharacterBuffer() {
+    keyboardInput.clear();
+    keyboardInput.push_back('\0');
+}
+
+void processTransformation() {
+    // get transformation window
+    float xMin = std::min(transformationWindowCoordinates[0], transformationWindowCoordinates[3]);
+    float xMax = std::max(transformationWindowCoordinates[0], transformationWindowCoordinates[3]);
+    float yMin = std::min(transformationWindowCoordinates[1], transformationWindowCoordinates[7]);
+    float yMax = std::max(transformationWindowCoordinates[1], transformationWindowCoordinates[7]);
+
+    int polygons = polygonIndexes.size() - 1;
+
+    for (int i = 0; i < linesCoordinates.size(); i += 6) {
+        if (linesCoordinates[i] >= xMin && linesCoordinates[i] <= xMax
+            && linesCoordinates[i + 1] >= yMin && linesCoordinates[i + 1] <= yMax
+            && linesCoordinates[i + 3] >= xMin && linesCoordinates[i + 3] <= xMax
+            && linesCoordinates[i + 4] >= yMin && linesCoordinates[i + 4] <= yMax) {
+            if (transformation == Transformation::reflectionX) {
+                linesCoordinates[i + 1] = -linesCoordinates[i + 1];
+                linesCoordinates[i + 4] = -linesCoordinates[i + 4];
+            }
+            else if (transformation == Transformation::reflectionY) {
+                linesCoordinates[i] = -linesCoordinates[i];
+                linesCoordinates[i + 3] = -linesCoordinates[i + 3];
+            }
+            else if (transformation == Transformation::reflectionOrigin) {
+                linesCoordinates[i] = -linesCoordinates[i];
+                linesCoordinates[i + 3] = -linesCoordinates[i + 3];
+                linesCoordinates[i + 1] = -linesCoordinates[i + 1];
+                linesCoordinates[i + 4] = -linesCoordinates[i + 4];
+            }
+        }
+    }
+
+    for (int i = 0; i < polygons; ++i) {
+        bool inside = true;
+        for (int j = polygonIndexes[i]; j < polygonIndexes[i + 1]; j += 3) {
+            if (polygonCoordinates[j] < xMin || polygonCoordinates[j] > xMax || polygonCoordinates[j + 1] < yMin || polygonCoordinates[j + 1] > yMax) {
+                inside = false;
+                break;
+            }
+        }
+        if (inside) {
+            for (int j = polygonIndexes[i]; j < polygonIndexes[i + 1]; j += 3) {
+                if (transformation == Transformation::reflectionX) {
+                    polygonCoordinates[j + 1] = -polygonCoordinates[j + 1];
+                }
+                else if (transformation == Transformation::reflectionY) {
+                    polygonCoordinates[j] = -polygonCoordinates[j];
+                }
+                else if (transformation == Transformation::reflectionOrigin) {
+                    polygonCoordinates[j] = -polygonCoordinates[j];
+                    polygonCoordinates[j + 1] = -polygonCoordinates[j + 1];
+                }
+            }
+        }
+    }
+
+    if (!linesCoordinates.empty()) {
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * linesCoordinates.size(), &linesCoordinates[0], GL_STATIC_DRAW);
+    }
+    if (polygons > 0) {
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * polygonCoordinates.size(), &polygonCoordinates[0], GL_STATIC_DRAW);
     }
 }
