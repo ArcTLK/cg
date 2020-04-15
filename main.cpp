@@ -174,6 +174,14 @@ void processKeyboardInput(GLFWwindow* window) {
         refreshBuffer();
         transformation = Transformation::reflectionOrigin;
     }
+    else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+        refreshBuffer();
+        transformation = Transformation::shearX;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+        refreshBuffer();
+        transformation = Transformation::shearY;
+    }
     else if (glfwGetKey(window, GLFW_KEY_END) == GLFW_PRESS) {
         transformation = Transformation::none;
         transformationWindowCoordinates.clear();
@@ -183,7 +191,9 @@ void processKeyboardInput(GLFWwindow* window) {
         if (listenForKeyboardInput) {
             if (transformation == Transformation::translation ||
                 transformation == Transformation::scaling ||
-                transformation == Transformation::rotation) {
+                transformation == Transformation::rotation ||
+                transformation == Transformation::shearX ||
+                transformation == Transformation::shearY) {
                 char* firstString = keyboardInput.data();
                 char* secondString = NULL;
                 for (int i = 0; i < keyboardInput.size(); ++i) {
@@ -294,7 +304,9 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
             if (!temporary) {
                 if (transformation == Transformation::translation ||
                     transformation == Transformation::scaling ||
-                    transformation == Transformation::rotation) {
+                    transformation == Transformation::rotation ||
+                    transformation == Transformation::shearX ||
+                    transformation == Transformation::shearY) {
                     // listen to keyboard input
                     listenForKeyboardInput = true;
                 }
@@ -432,6 +444,12 @@ void processTransformation(float x, float y) {
         x /= SCR_WIDTH;
         y /= SCR_HEIGHT;
     }
+    else if (transformation == Transformation::shearX) {
+        x /= SCR_WIDTH;
+    }
+    else if (transformation == Transformation::shearY) {
+        x /= SCR_HEIGHT;
+    }
     else if (transformation == Transformation::rotation) {
         trans = glm::mat4(1.0f);
         trans = glm::rotate(trans, glm::radians(-x), glm::vec3(0.0, 0.0, 1.0));
@@ -481,6 +499,14 @@ void processTransformation(float x, float y) {
                 linesCoordinates[i + 3] = vector.x;
                 linesCoordinates[i + 4] = vector.y;
             }
+            else if (transformation == Transformation::shearX) {
+                linesCoordinates[i] += x * linesCoordinates[i + 1];
+                linesCoordinates[i + 3] += x * linesCoordinates[i + 4];
+            }
+            else if (transformation == Transformation::shearY) {
+                linesCoordinates[i + 1] += x * linesCoordinates[i];
+                linesCoordinates[i + 4] += x * linesCoordinates[i + 3];
+            }
         }
     }
 
@@ -517,6 +543,12 @@ void processTransformation(float x, float y) {
                     vector = vector * trans;
                     polygonCoordinates[j] = vector.x;
                     polygonCoordinates[j + 1] = vector.y;
+                }
+                else if (transformation == Transformation::shearX) {
+                    polygonCoordinates[j] += x * polygonCoordinates[j + 1];
+                }
+                else if (transformation == Transformation::shearY) {
+                    polygonCoordinates[j + 1] += x * polygonCoordinates[j];
                 }
             }
         }
