@@ -154,6 +154,10 @@ void processKeyboardInput(GLFWwindow* window) {
         refreshBuffer();
         transformation = Transformation::translation;
     }
+    else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        refreshBuffer();
+        transformation = Transformation::scaling;
+    }
     else if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
         refreshBuffer();
         transformation = Transformation::reflectionX;
@@ -173,7 +177,7 @@ void processKeyboardInput(GLFWwindow* window) {
     }
     else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
         if (listenForKeyboardInput) {
-            if (transformation == Transformation::translation) {
+            if (transformation == Transformation::translation || transformation == Transformation::scaling) {
                 char* firstString = keyboardInput.data();
                 char* secondString = NULL;
                 for (int i = 0; i < keyboardInput.size(); ++i) {
@@ -183,12 +187,12 @@ void processKeyboardInput(GLFWwindow* window) {
                         break;
                     }
                 }
-                int x = (int)strtol(firstString, (char**)NULL, 10);
-                int y;
+                float x = (float)strtod(firstString, (char**)NULL);
+                float y;
                 if (secondString != NULL) {
-                    y = (int)strtol(secondString, (char**)NULL, 10);
+                    y = (float)strtod(secondString, (char**)NULL);
                 }
-                processTransformation((float)x, (float)y);
+                processTransformation(x, y);
             }
             listenForKeyboardInput = false;
             clearCharacterBuffer();
@@ -282,7 +286,7 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
             transformationWindowCoordinates.push_back(0.0f);
 
             if (!temporary) {
-                if (transformation == Transformation::translation) {
+                if (transformation == Transformation::translation || transformation == Transformation::scaling) {
                     // listen to keyboard input
                     listenForKeyboardInput = true;
                 }
@@ -446,6 +450,12 @@ void processTransformation(float x, float y) {
                 linesCoordinates[i + 1] += y;
                 linesCoordinates[i + 4] += y;
             }
+            else if (transformation == Transformation::scaling) {
+                linesCoordinates[i] *= x;
+                linesCoordinates[i + 3] *= x;
+                linesCoordinates[i + 1] *= y;
+                linesCoordinates[i + 4] *= y;
+            }
         }
     }
 
@@ -472,6 +482,10 @@ void processTransformation(float x, float y) {
                 else if (transformation == Transformation::translation) {
                     polygonCoordinates[j] += x;
                     polygonCoordinates[j + 1] += y;
+                }
+                else if (transformation == Transformation::scaling) {
+                    polygonCoordinates[j] *= x;
+                    polygonCoordinates[j + 1] *= y;
                 }
             }
         }
