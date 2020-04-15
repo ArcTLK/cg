@@ -102,16 +102,12 @@ int main() {
         // draw
         glUseProgram(shaderProgram);
 
-        if (transformation != Transformation::none) {
-            glBindVertexArray(VAO[2]);
-            glDrawArrays(GL_LINE_LOOP, 0, 4);
-        }
-
         glBindVertexArray(VAO[0]);
         glDrawArrays(GL_LINES, 0, (linesCoordinates.size() / 3) + 1);
         glBindVertexArray(VAO[1]);
         glDrawArrays(GL_LINES, 0, (polygonCoordinates.size() / 3) + 2);
-
+        glBindVertexArray(VAO[2]);
+        glDrawArrays(GL_LINE_LOOP, 0, 4);
 
         // swap buffers and poll IO events
         glfwPollEvents();
@@ -223,9 +219,8 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
         }
         // draw
         if (transformationWindowCoordinates.size() % 6 == 0) {
-            float* vertices = &transformationWindowCoordinates[0];
             glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(float) * transformationWindowCoordinates.size(), vertices, GL_STATIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(float) * transformationWindowCoordinates.size(), &transformationWindowCoordinates[0], GL_STATIC_DRAW);
         }
 
         if (temporary) {
@@ -247,9 +242,8 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
 
         // draw
         if (linesCoordinates.size() % 6 == 0) {
-            float* vertices = &linesCoordinates[0];
             glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(float) * linesCoordinates.size(), vertices, GL_STATIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(float) * linesCoordinates.size(), &linesCoordinates[0], GL_STATIC_DRAW);
         }
 
         if (temporary) {
@@ -311,9 +305,8 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
 
         // draw lines
         if (polygonCoordinates.size() > polygonIndexes.back() + 3) {
-            float* vertices = &polygonCoordinates[0];
             glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(float)* polygonCoordinates.size(), vertices, GL_STATIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(float)* polygonCoordinates.size(), &polygonCoordinates[0], GL_STATIC_DRAW);
         }
 
         if (temporary) {
