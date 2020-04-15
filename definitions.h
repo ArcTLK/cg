@@ -5,7 +5,8 @@
 enum class DrawMode : unsigned int {
     none,
     line,
-    polygon
+    polygon,
+    floodFill
 };
 
 enum class Transformation : unsigned int {

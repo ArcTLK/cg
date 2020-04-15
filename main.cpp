@@ -22,10 +22,12 @@ Transformation transformation = Transformation::none;
 std::vector<float> linesCoordinates;
 std::vector<float> polygonCoordinates;
 std::vector<int> polygonIndexes = { 0 };
+std::vector<std::vector<float> *> filledPolygonCoordinates;
 std::vector<float> transformationWindowCoordinates;
 std::vector<char> keyboardInput = { '\0' };
 
-unsigned int VBO[3], VAO[3];
+std::vector<unsigned int> VBO;
+std::vector<unsigned int> VAO;
 unsigned int vertexShader, fragmentShader, shaderProgram;
 
 bool listenForKeyboardInput = false;
@@ -64,12 +66,18 @@ int main() {
     glfwSetCharCallback(window, characterCallback);
 
     // initialize vertex buffer object
-    for (int i = 0; i < sizeof(VBO) / sizeof(unsigned int); ++i) {
+    VBO.push_back(0);
+    VBO.push_back(0);
+    VBO.push_back(0);
+    for (int i = 0; i < VBO.size(); ++i) {
         glGenBuffers(1, &VBO[i]);
     }
 
     // initialize vertex array object
-    for (int i = 0; i < sizeof(VAO) / sizeof(unsigned int); ++i) {
+    VAO.push_back(0);
+    VAO.push_back(0);
+    VAO.push_back(0);
+    for (int i = 0; i < VAO.size(); ++i) {
         glGenVertexArrays(1, &VAO[i]);
     }
 
@@ -92,7 +100,7 @@ int main() {
     glDeleteShader(fragmentShader);
 
     // bind VAO and VBO
-    for (int i = 0; i < sizeof(VAO) / sizeof(unsigned int); ++i) {
+    for (int i = 0; i < VAO.size(); ++i) {
         glBindVertexArray(VAO[i]);
         glBindBuffer(GL_ARRAY_BUFFER, VBO[i]);
         glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
@@ -117,11 +125,16 @@ int main() {
         glDrawArrays(GL_LINES, 0, (polygonCoordinates.size() / 3) + 2);
         glBindVertexArray(VAO[2]);
         glDrawArrays(GL_LINE_LOOP, 0, 4);
+        for (int i = 3; i < VAO.size(); ++i) {
+            glBindVertexArray(VAO[i]);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, filledPolygonCoordinates[i - 3]->size() / 3);
+        }
 
         // swap buffers and poll IO events
         glfwPollEvents();
         glfwSwapBuffers(window);
     }
+
     // terminate, unallocating resources
     glfwTerminate();
     return 0;
@@ -182,6 +195,10 @@ void processKeyboardInput(GLFWwindow* window) {
         refreshBuffer();
         transformation = Transformation::shearY;
     }
+    else if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
+        refreshBuffer();
+        drawMode = DrawMode::floodFill;
+    }
     else if (glfwGetKey(window, GLFW_KEY_END) == GLFW_PRESS) {
         transformation = Transformation::none;
         transformationWindowCoordinates.clear();
@@ -230,8 +247,13 @@ void clearCoordinates() {
     polygonCoordinates.clear();
     polygonIndexes.clear();
     polygonIndexes.push_back(0);
+    filledPolygonCoordinates.clear();
+    for (int i = 0; i < filledPolygonCoordinates.size(); ++i) {
+        filledPolygonCoordinates[i]->clear();
+        delete filledPolygonCoordinates[i];
+    }
     transformationWindowCoordinates.clear();
-    for (int i = 0; i < sizeof(VBO) / sizeof(unsigned int); ++i) {
+    for (int i = 0; i < VBO.size(); ++i) {
         glBindBuffer(GL_ARRAY_BUFFER, VBO[i]);
         glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
     }
@@ -418,6 +440,38 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
             }
         }
     }
+    else if (drawMode == DrawMode::floodFill) {
+        int polygons = polygonIndexes.size() - 1;
+        for (int i = 0; i < polygons; ++i) {
+            bool greater = false;
+            bool lesser = false;
+            for (int j = polygonIndexes[i]; j < polygonIndexes[i + 1]; j += 3) {
+                // calculate if mouse point is inside polygon or not
+                if (polygonCoordinates[j] >= xValue && polygonCoordinates[j + 1] >= yValue) {
+                    greater = true;
+                }
+                else if (polygonCoordinates[j] <= xValue && polygonCoordinates[j + 1] <= yValue) {
+                    lesser = true;
+                }
+            }
+            if (greater && lesser) {
+                std::vector<float>* vector = new std::vector<float>;
+                filledPolygonCoordinates.push_back(vector);
+                for (int j = polygonIndexes[i]; j < polygonIndexes[i + 1]; ++j) {
+                    filledPolygonCoordinates.back()->push_back(polygonCoordinates[j]);
+                }
+                VAO.push_back(0);
+                VBO.push_back(0);
+                glGenBuffers(1, &VBO.back());
+                glGenVertexArrays(1, &VAO.back());
+                glBindVertexArray(VAO.back());
+                glBindBuffer(GL_ARRAY_BUFFER, VBO.back());
+                glBufferData(GL_ARRAY_BUFFER, sizeof(float) * filledPolygonCoordinates.back()->size(), &filledPolygonCoordinates.back()[0], GL_STATIC_DRAW);
+                glEnableVertexAttribArray(0);
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+            }
+        }
+    }
 }
 
 void characterCallback(GLFWwindow* window, unsigned int codepoint) {
@@ -554,6 +608,50 @@ void processTransformation(float x, float y) {
         }
     }
 
+    for (int i = 0; i < filledPolygonCoordinates.size(); ++i) {
+        bool inside = true;
+        for (auto j = filledPolygonCoordinates[i]->begin(); j != filledPolygonCoordinates[i]->end(); j += 3) {
+            if (*j < xMin || *j > xMax || *(j + 1) < yMin || *(j + 1) > yMax) {
+                inside = false;
+                break;
+            }
+        }
+        if (inside) {
+            for (auto j = filledPolygonCoordinates[i]->begin(); j != filledPolygonCoordinates[i]->end(); j += 3) {
+                if (transformation == Transformation::reflectionX) {
+                    *(j + 1) = -*(j + 1);
+                }
+                else if (transformation == Transformation::reflectionY) {
+                    *j = -*j;
+                }
+                else if (transformation == Transformation::reflectionOrigin) {
+                    *j = -*j;
+                    *(j + 1) = -*(j + 1);
+                }
+                else if (transformation == Transformation::translation) {
+                    *j += x;
+                    *(j + 1) += y;
+                }
+                else if (transformation == Transformation::scaling) {
+                    *j *= x;
+                    *(j + 1) *= y;
+                }
+                else if (transformation == Transformation::rotation) {
+                    glm::vec4 vector = { *j, *(j + 1), 0.0f, 1.0f };
+                    vector = vector * trans;
+                    *j = vector.x;
+                    *(j + 1) = vector.y;
+                }
+                else if (transformation == Transformation::shearX) {
+                    *j += x * *(j + 1);
+                }
+                else if (transformation == Transformation::shearY) {
+                    *(j + 1) += x * *j;
+                }
+            }
+        }
+    }
+
     if (!linesCoordinates.empty()) {
         glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
         glBufferData(GL_ARRAY_BUFFER, sizeof(float) * linesCoordinates.size(), &linesCoordinates[0], GL_STATIC_DRAW);
@@ -561,6 +659,10 @@ void processTransformation(float x, float y) {
     if (polygons > 0) {
         glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
         glBufferData(GL_ARRAY_BUFFER, sizeof(float) * polygonCoordinates.size(), &polygonCoordinates[0], GL_STATIC_DRAW);
+    }
+    for (int i = 0; i < filledPolygonCoordinates.size(); ++i) {
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[i + 3]);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float)* filledPolygonCoordinates[i]->size(), &filledPolygonCoordinates[i][0], GL_STATIC_DRAW);
     }
 }
 
