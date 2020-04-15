@@ -14,7 +14,7 @@
 
 // global variables
 unsigned int SCR_WIDTH = 640;
-unsigned int SCR_HEIGHT = 360;
+unsigned int SCR_HEIGHT = 640;
 
 DrawMode drawMode = DrawMode::line;
 Transformation transformation = Transformation::none;
@@ -158,6 +158,10 @@ void processKeyboardInput(GLFWwindow* window) {
         refreshBuffer();
         transformation = Transformation::scaling;
     }
+    else if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+        refreshBuffer();
+        transformation = Transformation::rotation;
+    }
     else if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
         refreshBuffer();
         transformation = Transformation::reflectionX;
@@ -177,7 +181,9 @@ void processKeyboardInput(GLFWwindow* window) {
     }
     else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
         if (listenForKeyboardInput) {
-            if (transformation == Transformation::translation || transformation == Transformation::scaling) {
+            if (transformation == Transformation::translation ||
+                transformation == Transformation::scaling ||
+                transformation == Transformation::rotation) {
                 char* firstString = keyboardInput.data();
                 char* secondString = NULL;
                 for (int i = 0; i < keyboardInput.size(); ++i) {
@@ -188,7 +194,7 @@ void processKeyboardInput(GLFWwindow* window) {
                     }
                 }
                 float x = (float)strtod(firstString, (char**)NULL);
-                float y;
+                float y = 0.0f;
                 if (secondString != NULL) {
                     y = (float)strtod(secondString, (char**)NULL);
                 }
@@ -286,7 +292,9 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
             transformationWindowCoordinates.push_back(0.0f);
 
             if (!temporary) {
-                if (transformation == Transformation::translation || transformation == Transformation::scaling) {
+                if (transformation == Transformation::translation ||
+                    transformation == Transformation::scaling ||
+                    transformation == Transformation::rotation) {
                     // listen to keyboard input
                     listenForKeyboardInput = true;
                 }
@@ -418,9 +426,15 @@ void processTransformation(float x, float y) {
     float yMin = std::min(transformationWindowCoordinates[1], transformationWindowCoordinates[7]);
     float yMax = std::max(transformationWindowCoordinates[1], transformationWindowCoordinates[7]);
 
+    glm::mat4 trans;
+
     if (transformation == Transformation::translation) {        
         x /= SCR_WIDTH;
         y /= SCR_HEIGHT;
+    }
+    else if (transformation == Transformation::rotation) {
+        trans = glm::mat4(1.0f);
+        trans = glm::rotate(trans, glm::radians(-x), glm::vec3(0.0, 0.0, 1.0));
     }
 
     int polygons = polygonIndexes.size() - 1;
@@ -456,6 +470,17 @@ void processTransformation(float x, float y) {
                 linesCoordinates[i + 1] *= y;
                 linesCoordinates[i + 4] *= y;
             }
+            else if (transformation == Transformation::rotation) {
+                glm::vec4 vector = { linesCoordinates[i], linesCoordinates[i + 1], 0.0f, 1.0f };
+                vector = vector * trans;
+                linesCoordinates[i] = vector.x;
+                linesCoordinates[i + 1] = vector.y;
+
+                vector = { linesCoordinates[i + 3], linesCoordinates[i + 4], 0.0f, 1.0f };
+                vector = vector * trans;
+                linesCoordinates[i + 3] = vector.x;
+                linesCoordinates[i + 4] = vector.y;
+            }
         }
     }
 
@@ -486,6 +511,12 @@ void processTransformation(float x, float y) {
                 else if (transformation == Transformation::scaling) {
                     polygonCoordinates[j] *= x;
                     polygonCoordinates[j + 1] *= y;
+                }
+                else if (transformation == Transformation::rotation) {
+                    glm::vec4 vector = { polygonCoordinates[j], polygonCoordinates[j + 1], 0.0f, 1.0f };
+                    vector = vector * trans;
+                    polygonCoordinates[j] = vector.x;
+                    polygonCoordinates[j + 1] = vector.y;
                 }
             }
         }

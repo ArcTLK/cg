@@ -1,4 +1,6 @@
 #pragma once
+#define M_PI acos(-1.0)
+
 // class definitions
 enum class DrawMode : unsigned int {
     none,
