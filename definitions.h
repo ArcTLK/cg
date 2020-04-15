@@ -27,5 +27,6 @@ void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 void insertCoordinates(float xpos, float ypos, bool temporary = false);
 void characterCallback(GLFWwindow* window, unsigned int codepoint);
 void clearCharacterBuffer();
-void processTransformation();
+void processTransformation(float x = 0.0f, float y = 0.0f);
 void refreshBuffer();
+void normalizeCoordinates(float *x, float *y);

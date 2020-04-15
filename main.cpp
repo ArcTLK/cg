@@ -2,6 +2,8 @@
 #include <vector>
 #include <algorithm>
 #include <math.h>
+#include <string.h>
+#include <stdlib.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -170,9 +172,27 @@ void processKeyboardInput(GLFWwindow* window) {
         refreshBuffer();
     }
     else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
-        printf("%s", keyboardInput.data());
-        listenForKeyboardInput = false;
-        clearCharacterBuffer();
+        if (listenForKeyboardInput) {
+            if (transformation == Transformation::translation) {
+                char* firstString = keyboardInput.data();
+                char* secondString = NULL;
+                for (int i = 0; i < keyboardInput.size(); ++i) {
+                    if (keyboardInput[i] == ' ') {
+                        keyboardInput[i] = '\0';
+                        secondString = &keyboardInput[i + 1];
+                        break;
+                    }
+                }
+                int x = (int)strtol(firstString, (char**)NULL, 10);
+                int y;
+                if (secondString != NULL) {
+                    y = (int)strtol(secondString, (char**)NULL, 10);
+                }
+                processTransformation((float)x, (float)y);
+            }
+            listenForKeyboardInput = false;
+            clearCharacterBuffer();
+        }
     }
 }
 
@@ -211,16 +231,6 @@ void refreshBuffer() {
     }
 
     // clean
-    /*
-    if (linesCoordinates.size() > 0) {
-        glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
-        glBufferData(GL_ARRAY_BUFFER, 0, &linesCoordinates[0], GL_STATIC_DRAW);
-    }
-    if (polygonCoordinates.size() > 0) {
-        glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
-        glBufferData(GL_ARRAY_BUFFER, 0, &polygonCoordinates[0], GL_STATIC_DRAW);
-    }
-    */
     glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
     glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
 }
@@ -247,9 +257,9 @@ void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
 }
 
 void insertCoordinates(float xpos, float ypos, bool temporary) {
-    float xValue = (2.0f / (float)SCR_WIDTH) * xpos - 1;
-    // taking the negative of the coordinate to flip Y-axis
-    float yValue = -((2.0f / (float)SCR_HEIGHT) * ypos - 1);
+    float xValue = xpos;
+    float yValue = ypos;
+    normalizeCoordinates(&xValue, &yValue);
 
     if (transformation != Transformation::none) {
         if (transformationWindowCoordinates.size() % 6 == 0) {
@@ -397,12 +407,17 @@ void clearCharacterBuffer() {
     keyboardInput.push_back('\0');
 }
 
-void processTransformation() {
+void processTransformation(float x, float y) {
     // get transformation window
     float xMin = std::min(transformationWindowCoordinates[0], transformationWindowCoordinates[3]);
     float xMax = std::max(transformationWindowCoordinates[0], transformationWindowCoordinates[3]);
     float yMin = std::min(transformationWindowCoordinates[1], transformationWindowCoordinates[7]);
     float yMax = std::max(transformationWindowCoordinates[1], transformationWindowCoordinates[7]);
+
+    if (transformation == Transformation::translation) {        
+        x /= SCR_WIDTH;
+        y /= SCR_HEIGHT;
+    }
 
     int polygons = polygonIndexes.size() - 1;
 
@@ -424,6 +439,12 @@ void processTransformation() {
                 linesCoordinates[i + 3] = -linesCoordinates[i + 3];
                 linesCoordinates[i + 1] = -linesCoordinates[i + 1];
                 linesCoordinates[i + 4] = -linesCoordinates[i + 4];
+            }
+            else if (transformation == Transformation::translation) {
+                linesCoordinates[i] += x;
+                linesCoordinates[i + 3] += x;
+                linesCoordinates[i + 1] += y;
+                linesCoordinates[i + 4] += y;
             }
         }
     }
@@ -448,6 +469,10 @@ void processTransformation() {
                     polygonCoordinates[j] = -polygonCoordinates[j];
                     polygonCoordinates[j + 1] = -polygonCoordinates[j + 1];
                 }
+                else if (transformation == Transformation::translation) {
+                    polygonCoordinates[j] += x;
+                    polygonCoordinates[j + 1] += y;
+                }
             }
         }
     }
@@ -460,4 +485,10 @@ void processTransformation() {
         glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
         glBufferData(GL_ARRAY_BUFFER, sizeof(float) * polygonCoordinates.size(), &polygonCoordinates[0], GL_STATIC_DRAW);
     }
+}
+
+void normalizeCoordinates(float *x, float *y) {
+    *x = (2.0f / (float)SCR_WIDTH) * *x - 1;
+    // flip Y coordinate
+    *y = -((2.0f / (float)SCR_HEIGHT) * *y - 1);
 }
