@@ -443,40 +443,27 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
     else if (drawMode == DrawMode::floodFill) {
         int polygons = polygonIndexes.size() - 1;
         for (int i = 0; i < polygons; ++i) {
-
-            /*
-            int pnpoly(int nvert, float *vertx, float *verty, float testx, float testy)
-            {
-              int i, j, c = 0;
-              for (i = 0, j = nvert-1; i < nvert; j = i++) {
-                if ( ((verty[i]>testy) != (verty[j]>testy)) &&
-                 (testx < (vertx[j]-vertx[i]) * (testy-verty[i]) / (verty[j]-verty[i]) + vertx[i]) )
-                   c = !c;
-              }
-              return c;
-            }
-            */
             bool inside = false;
-            for (int k = 0, j = (polygonIndexes[i + 1] - polygonIndexes[i]) / 3 - 1; k < (polygonIndexes[i + 1] - polygonIndexes[i]) / 3; j = k++) {
+            for (int k = polygonIndexes[i] / 3, j = (polygonIndexes[i + 1]) / 3 - 1; k < (polygonIndexes[i + 1]) / 3; j = k++) {
                 if (((polygonCoordinates[k * 3 + 1] > yValue) != (polygonCoordinates[j * 3 + 1] > yValue)) &&
                     (xValue < (polygonCoordinates[j * 3] - polygonCoordinates[k * 3]) * (yValue - polygonCoordinates[k * 3 + 1]) / (polygonCoordinates[j * 3 + 1] - polygonCoordinates[k * 3 + 1]) + polygonCoordinates[k * 3])) {
                     inside = !inside;
                 }
             }
             if (inside) {
-                std::cout << "true";
                 std::vector<float>* vector = new std::vector<float>;
                 filledPolygonCoordinates.push_back(vector);
                 for (int j = polygonIndexes[i]; j < polygonIndexes[i + 1]; ++j) {
                     filledPolygonCoordinates.back()->push_back(polygonCoordinates[j]);
                 }
+
                 VAO.push_back(0);
                 VBO.push_back(0);
-                glGenBuffers(1, &VBO.back());
-                glGenVertexArrays(1, &VAO.back());
+                glGenBuffers(1, &(VBO.back()));
+                glGenVertexArrays(1, &(VAO.back()));
                 glBindVertexArray(VAO.back());
                 glBindBuffer(GL_ARRAY_BUFFER, VBO.back());
-                glBufferData(GL_ARRAY_BUFFER, sizeof(float) * filledPolygonCoordinates.back()->size(), &filledPolygonCoordinates.back()[0], GL_STATIC_DRAW);
+                glBufferData(GL_ARRAY_BUFFER, sizeof(float) * filledPolygonCoordinates.back()->size(), filledPolygonCoordinates.back()->data(), GL_STATIC_DRAW);
                 glEnableVertexAttribArray(0);
                 glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
             }
@@ -672,7 +659,7 @@ void processTransformation(float x, float y) {
     }
     for (int i = 0; i < filledPolygonCoordinates.size(); ++i) {
         glBindBuffer(GL_ARRAY_BUFFER, VBO[i + 3]);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float)* filledPolygonCoordinates[i]->size(), &filledPolygonCoordinates[i][0], GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float)* filledPolygonCoordinates[i]->size(), filledPolygonCoordinates[i]->data(), GL_STATIC_DRAW);
     }
 }
 
