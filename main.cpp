@@ -443,18 +443,28 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
     else if (drawMode == DrawMode::floodFill) {
         int polygons = polygonIndexes.size() - 1;
         for (int i = 0; i < polygons; ++i) {
-            bool greater = false;
-            bool lesser = false;
-            for (int j = polygonIndexes[i]; j < polygonIndexes[i + 1]; j += 3) {
-                // calculate if mouse point is inside polygon or not
-                if (polygonCoordinates[j] >= xValue && polygonCoordinates[j + 1] >= yValue) {
-                    greater = true;
-                }
-                else if (polygonCoordinates[j] <= xValue && polygonCoordinates[j + 1] <= yValue) {
-                    lesser = true;
+
+            /*
+            int pnpoly(int nvert, float *vertx, float *verty, float testx, float testy)
+            {
+              int i, j, c = 0;
+              for (i = 0, j = nvert-1; i < nvert; j = i++) {
+                if ( ((verty[i]>testy) != (verty[j]>testy)) &&
+                 (testx < (vertx[j]-vertx[i]) * (testy-verty[i]) / (verty[j]-verty[i]) + vertx[i]) )
+                   c = !c;
+              }
+              return c;
+            }
+            */
+            bool inside = false;
+            for (int k = 0, j = (polygonIndexes[i + 1] - polygonIndexes[i]) / 3 - 1; k < (polygonIndexes[i + 1] - polygonIndexes[i]) / 3; j = k++) {
+                if (((polygonCoordinates[k * 3 + 1] > yValue) != (polygonCoordinates[j * 3 + 1] > yValue)) &&
+                    (xValue < (polygonCoordinates[j * 3] - polygonCoordinates[k * 3]) * (yValue - polygonCoordinates[k * 3 + 1]) / (polygonCoordinates[j * 3 + 1] - polygonCoordinates[k * 3 + 1]) + polygonCoordinates[k * 3])) {
+                    inside = !inside;
                 }
             }
-            if (greater && lesser) {
+            if (inside) {
+                std::cout << "true";
                 std::vector<float>* vector = new std::vector<float>;
                 filledPolygonCoordinates.push_back(vector);
                 for (int j = polygonIndexes[i]; j < polygonIndexes[i + 1]; ++j) {
