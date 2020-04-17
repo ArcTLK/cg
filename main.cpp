@@ -38,6 +38,8 @@ std::map<GLchar, Character> characters;
 
 bool listenForKeyboardInput = false;
 
+GLFWcursor *crossHairCursor, *defaultCursor, *pointerCursor;
+
 int main() {
     // GLFW initialization
     glfwInit();
@@ -67,8 +69,10 @@ int main() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // cursor
-    GLFWcursor* cursor = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
-    glfwSetCursor(window, cursor);
+    crossHairCursor = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
+    pointerCursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+    defaultCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+    glfwSetCursor(window, crossHairCursor);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
     glfwSetCursorPosCallback(window, cursorPositionCallback);
 
@@ -194,14 +198,141 @@ int main() {
 
     // initialize box coordinates
     menuBoxCoordinates.assign({
+        // menu box
         -0.95f, 0.95f, 0.0f,
-        -0.75f, 0.95f, 0.0f,
-        -0.75f, 0.95f, 0.0f,
-        -0.75f, 0.75f, 0.0f,
-        -0.75f, 0.75f, 0.0f,
-        -0.95f, 0.75f, 0.0f,
-        -0.95f, 0.75f, 0.0f,
-        -0.95f, 0.95f, 0.0f
+        -0.125f, 0.95f, 0.0f,
+        -0.125f, 0.95f, 0.0f,
+        -0.125f, 0.425f, 0.0f,
+        -0.125f, 0.425f, 0.0f,
+        -0.95f, 0.425f, 0.0f,
+        -0.95f, 0.425f, 0.0f,
+        -0.95f, 0.95f, 0.0f,
+        // menu lines 1
+        -0.95f, 0.885f, 0.0f,
+        -0.125f, 0.885f, 0.0f,
+        // menu lines 2
+        -0.65f, 0.885f, 0.0f,
+        -0.65f, 0.425f, 0.0f,
+        // menu lines 3
+        -0.95f, 0.825f, 0.0f,
+        -0.125f, 0.825f, 0.0f,
+        // draw button 1
+        -0.90f, 0.8f, 0.0f,
+        -0.70f, 0.8f, 0.0f,
+        -0.70f, 0.8f, 0.0f,
+        -0.70f, 0.75f, 0.0f,
+        -0.70f, 0.75f, 0.0f,
+        -0.90f, 0.75f, 0.0f,
+        -0.90f, 0.75f, 0.0f,
+        -0.90f, 0.8f, 0.0f,
+        // draw button 2
+        -0.90f, 0.725f, 0.0f,
+        -0.70f, 0.725f, 0.0f,
+        -0.70f, 0.725f, 0.0f,
+        -0.70f, 0.675f, 0.0f,
+        -0.70f, 0.675f, 0.0f,
+        -0.90f, 0.675f, 0.0f,
+        -0.90f, 0.675f, 0.0f,
+        -0.90f, 0.725f, 0.0f,
+        // draw button 3
+        -0.90f, 0.65f, 0.0f,
+        -0.70f, 0.65f, 0.0f,
+        -0.70f, 0.65f, 0.0f,
+        -0.70f, 0.60f, 0.0f,
+        -0.70f, 0.60f, 0.0f,
+        -0.90f, 0.60f, 0.0f,
+        -0.90f, 0.60f, 0.0f,
+        -0.90f, 0.65f, 0.0f,
+        // draw button 4
+        -0.90f, 0.575f, 0.0f,
+        -0.70f, 0.575f, 0.0f,
+        -0.70f, 0.575f, 0.0f,
+        -0.70f, 0.525f, 0.0f,
+        -0.70f, 0.525f, 0.0f,
+        -0.90f, 0.525f, 0.0f,
+        -0.90f, 0.525f, 0.0f,
+        -0.90f, 0.575f, 0.0f,
+        // transform button 1 A
+        -0.60f, 0.8f, 0.0f,
+        -0.40f, 0.8f, 0.0f,
+        -0.40f, 0.8f, 0.0f,
+        -0.40f, 0.75f, 0.0f,
+        -0.40f, 0.75f, 0.0f,
+        -0.60f, 0.75f, 0.0f,
+        -0.60f, 0.75f, 0.0f,
+        -0.60f, 0.8f, 0.0f,
+        // transform button 1 B
+        -0.375f, 0.8f, 0.0f,
+        -0.175f, 0.8f, 0.0f,
+        -0.175f, 0.8f, 0.0f,
+        -0.175f, 0.75f, 0.0f,
+        -0.175f, 0.75f, 0.0f,
+        -0.375f, 0.75f, 0.0f,
+        -0.375f, 0.75f, 0.0f,
+        -0.375f, 0.8f, 0.0f,
+        // transform button 2 A
+        -0.60f, 0.725f, 0.0f,
+        -0.40f, 0.725f, 0.0f,
+        -0.40f, 0.725f, 0.0f,
+        -0.40f, 0.675f, 0.0f,
+        -0.40f, 0.675f, 0.0f,
+        -0.60f, 0.675f, 0.0f,
+        -0.60f, 0.675f, 0.0f,
+        -0.60f, 0.725f, 0.0f,
+        // transform button 2 B
+        -0.375f, 0.725f, 0.0f,
+        -0.175f, 0.725f, 0.0f,
+        -0.175f, 0.725f, 0.0f,
+        -0.175f, 0.675f, 0.0f,
+        -0.175f, 0.675f, 0.0f,
+        -0.375f, 0.675f, 0.0f,
+        -0.375f, 0.675f, 0.0f,
+        -0.375f, 0.725f, 0.0f,
+        // transform button 3 A
+        -0.60f, 0.65f, 0.0f,
+        -0.40f, 0.65f, 0.0f,
+        -0.40f, 0.65f, 0.0f,
+        -0.40f, 0.60f, 0.0f,
+        -0.40f, 0.60f, 0.0f,
+        -0.60f, 0.60f, 0.0f,
+        -0.60f, 0.60f, 0.0f,
+        -0.60f, 0.65f, 0.0f,
+        // transform button 3 B
+        -0.375f, 0.65f, 0.0f,
+        -0.175f, 0.65f, 0.0f,
+        -0.175f, 0.65f, 0.0f,
+        -0.175f, 0.60f, 0.0f,
+        -0.175f, 0.60f, 0.0f,
+        -0.375f, 0.60f, 0.0f,
+        -0.375f, 0.60f, 0.0f,
+        -0.375f, 0.65f, 0.0f,
+        // transform button 4 A
+        -0.60f, 0.575f, 0.0f,
+        -0.40f, 0.575f, 0.0f,
+        -0.40f, 0.575f, 0.0f,
+        -0.40f, 0.525f, 0.0f,
+        -0.40f, 0.525f, 0.0f,
+        -0.60f, 0.525f, 0.0f,
+        -0.60f, 0.525f, 0.0f,
+        -0.60f, 0.575f, 0.0f,
+        // transform button 4 B
+        -0.375f, 0.575f, 0.0f,
+        -0.175f, 0.575f, 0.0f,
+        -0.175f, 0.575f, 0.0f,
+        -0.175f, 0.525f, 0.0f,
+        -0.175f, 0.525f, 0.0f,
+        -0.375f, 0.525f, 0.0f,
+        -0.375f, 0.525f, 0.0f,
+        -0.375f, 0.575f, 0.0f,
+        // transform button 5 AB
+        -0.49f, 0.50f, 0.0f,
+        -0.29f, 0.50f, 0.0f,
+        -0.29f, 0.50f, 0.0f,
+        -0.29f, 0.45f, 0.0f,
+        -0.29f, 0.45f, 0.0f,
+        -0.49f, 0.45f, 0.0f,
+        -0.49f, 0.45f, 0.0f,
+        -0.49f, 0.50f, 0.0f
     });
 
     // box buffer data
@@ -216,9 +347,25 @@ int main() {
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // draw text
-        renderText("Test", 200.0f, -500.0f, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
-        renderText("Test 2", -600.0f, 600.0f, 1.0f, glm::vec3(0.5, 0.0f, 0.0f));
+        // headings
+        renderText("Menu", -0.59f, 0.90f, 0.75f, glm::vec3(0.1484375f, 0.20703125f, 0.828125f));
+        renderText("Draw", -0.85f, 0.84f, 0.6f, glm::vec3(0.1484375f, 0.20703125f, 0.828125f));
+        renderText("Transform", -0.48f, 0.84f, 0.6f, glm::vec3(0.1484375f, 0.20703125f, 0.828125f));
+        // draw menu
+        renderText("Line", -0.83f, 0.7625f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
+        renderText("Polygon", -0.86f, 0.69f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
+        renderText("Flood Fill", -0.87f, 0.615f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
+        renderText("Clear", -0.84f, 0.54f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
+        // transform menu
+        renderText("Translate", -0.579f, 0.7625f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
+        renderText("Rotate", -0.33f, 0.7625f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
+        renderText("Reflect X", -0.573f, 0.687f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
+        renderText("Reflect Y", -0.343f, 0.687f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
+        renderText("Reflect Origin", -0.595f, 0.615f, 0.45f, glm::vec3(0.0f, 0.0f, 0.0f));
+        renderText("Scale", -0.32f, 0.615f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
+        renderText("X-Shear", -0.566f, 0.54f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
+        renderText("Y-Shear", -0.339f, 0.54f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
+        renderText("Cancel", -0.442f, 0.465f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
 
         // draw
         glUseProgram(shaderProgram);
@@ -229,6 +376,9 @@ int main() {
         glDrawArrays(GL_LINES, 0, (polygonCoordinates.size() / 3) + 2);
         glBindVertexArray(VAO[i++]);
         glDrawArrays(GL_LINE_LOOP, 0, 4);
+
+        // again for text (happens in a different function)
+        i++;
 
         glBindVertexArray(VAO[i++]);
         glDrawArrays(GL_LINES, 0, menuBoxCoordinates.size() / 3);
@@ -345,8 +495,13 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
 
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-        insertCoordinates((float)xpos, (float)ypos);
+    float x = (float)xpos, y = (float)ypos;
+    normalizeCoordinates(&x, &y);
+
+    if (x > -0.125f || y < 0.425f) {
+        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+            insertCoordinates((float)xpos, (float)ypos);
+        }
     }
 }
 
@@ -386,22 +541,46 @@ void refreshBuffer() {
 }
 
 void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
-    if (transformation != Transformation::none) {
-        if (transformationWindowCoordinates.size() % 6 == 3) {
-            // add coordinates temporarily
-            insertCoordinates((float)xpos, (float)ypos, true);
-        }
+    float x = (float)xpos, y = (float)ypos;
+    normalizeCoordinates(&x, &y);
+
+    if ((x >= -0.49f && x <= -0.29f && y >= 0.45f && y <= 0.50f) || 
+        (x >= -0.375f && x <= -0.175f && y >= 0.525f && y <= 0.575f) ||
+        (x >= -0.60f && x <= -0.40f && y >= 0.525f && y <= 0.575f) ||
+        (x >= -0.375f && x <= -0.175f && y >= 0.60f && y <= 0.65f) ||
+        (x >= -0.60f && x <= -0.40f && y >= 0.60f && y <= 0.65f) ||
+        (x >= -0.375f && x <= -0.175f && y >= 0.675f && y <= 0.725f) ||
+        (x >= -0.60f && x <= -0.40f && y >= 0.675f && y <= 0.725f) ||
+        (x >= -0.375f && x <= -0.175f && y >= 0.75f && y <= 0.80f) ||
+        (x >= -0.60f && x <= -0.40f && y >= 0.75f && y <= 0.80f) ||
+        (x >= -0.90f && x <= -0.70f && y >= 0.525f && y <= 0.575f) ||
+        (x >= -0.90f && x <= -0.70f && y >= 0.60f && y <= 0.65f) ||
+        (x >= -0.90f && x <= -0.70f && y >= 0.675f && y <= 0.725f) ||
+        (x >= -0.90f && x <= -0.70f && y >= 0.75f && y <= 0.80f)) {
+        glfwSetCursor(window, pointerCursor);
     }
-    else if (drawMode == DrawMode::line) {
-        if (linesCoordinates.size() % 6 == 3) {
-            // add coordinates temporarily
-            insertCoordinates((float)xpos, (float)ypos, true);
-        }
+    else if (x <= -0.125f && y >= 0.425f) {
+        glfwSetCursor(window, defaultCursor);
     }
-    else if (drawMode == DrawMode::polygon) {
-        if (polygonCoordinates.size() > polygonIndexes.back()) {
-            // add coordinates temporarily
-            insertCoordinates((float)xpos, (float)ypos, true);
+    else {
+        glfwSetCursor(window, crossHairCursor);
+        if (transformation != Transformation::none) {
+            if (transformationWindowCoordinates.size() % 6 == 3) {
+                // add coordinates temporarily
+                insertCoordinates((float)xpos, (float)ypos, true);
+            }
+        }
+        else if (drawMode == DrawMode::line) {
+            if (linesCoordinates.size() % 6 == 3) {
+                // add coordinates temporarily
+                insertCoordinates((float)xpos, (float)ypos, true);
+            }
+        }
+        else if (drawMode == DrawMode::polygon) {
+            if (polygonCoordinates.size() > polygonIndexes.back()) {
+                // add coordinates temporarily
+                insertCoordinates((float)xpos, (float)ypos, true);
+            }
         }
     }
 }
@@ -778,6 +957,10 @@ void normalizeCoordinates(float *x, float *y) {
 }
 
 void renderText(std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color) {
+
+    // convert x and y to coords
+    x *= SCR_WIDTH;
+    y *= SCR_HEIGHT;
 
     glUseProgram(textShaderProgram);
     glUniform3f(glGetUniformLocation(textShaderProgram, "textColor"), color.x, color.y, color.z);
