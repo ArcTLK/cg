@@ -2,6 +2,6 @@
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
-x64
-Debug
+src/x64
+src/Debug
 .vs

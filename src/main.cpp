@@ -45,7 +45,7 @@ bool backSpaced = false;
 
 GLFWcursor *crossHairCursor, *defaultCursor, *pointerCursor;
 
-int main() {
+int WinMain() {
     // GLFW initialization
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
