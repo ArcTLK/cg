@@ -19,7 +19,7 @@
 unsigned int SCR_WIDTH = 700;
 unsigned int SCR_HEIGHT = 700;
 
-DrawMode drawMode = DrawMode::line;
+DrawMode drawMode = DrawMode::none;
 Transformation transformation = Transformation::none;
 
 std::vector<float> menuBoxCoordinates;
@@ -28,7 +28,10 @@ std::vector<float> polygonCoordinates;
 std::vector<int> polygonIndexes = { 0 };
 std::vector<std::vector<float> *> filledPolygonCoordinates;
 std::vector<float> transformationWindowCoordinates;
-std::vector<char> keyboardInput = { '\0' };
+std::vector<char> keyboardInput1 = { '\0' };
+std::vector<char> keyboardInput2 = { '\0' };
+
+std::string tempString = "";
 
 std::vector<unsigned int> VBO;
 std::vector<unsigned int> VAO;
@@ -37,6 +40,8 @@ unsigned int vertexShader, fragmentShader, shaderProgram, textVertexShader, text
 std::map<GLchar, Character> characters;
 
 bool listenForKeyboardInput = false;
+bool spaced = false;
+bool backSpaced = false;
 
 GLFWcursor *crossHairCursor, *defaultCursor, *pointerCursor;
 
@@ -367,6 +372,18 @@ int main() {
         renderText("Y-Shear", -0.339f, 0.54f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
         renderText("Cancel", -0.442f, 0.465f, 0.525f, glm::vec3(0.0f, 0.0f, 0.0f));
 
+        if (listenForKeyboardInput) {
+            std::string firstString = keyboardInput1.data();
+            std::string secondString = keyboardInput2.data();
+            if (transformation == Transformation::translation || transformation == Transformation::scaling) {
+                tempString = "Enter transformation factors: [X: " + firstString + ", Y: " + secondString + "]";
+            }
+            else {
+                tempString = "Enter transformation factor: " + firstString;
+            }
+            renderText(tempString, -0.1f, 0.9f, 0.75f, glm::vec3(0.0f, 0.0f, 0.0f));
+        }
+
         // draw
         glUseProgram(shaderProgram);
         int i = 0;
@@ -408,60 +425,6 @@ void processKeyboardInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
-    else if (glfwGetKey(window, GLFW_KEY_DELETE) == GLFW_PRESS) {
-        transformation = Transformation::none;
-        drawMode = DrawMode::none;
-        clearCoordinates();
-    }
-    else if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) {
-        refreshBuffer();
-        drawMode = DrawMode::line;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
-        refreshBuffer();
-        drawMode = DrawMode::polygon;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) {
-        refreshBuffer();
-        transformation = Transformation::translation;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        refreshBuffer();
-        transformation = Transformation::scaling;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-        refreshBuffer();
-        transformation = Transformation::rotation;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
-        refreshBuffer();
-        transformation = Transformation::reflectionX;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) {
-        refreshBuffer();
-        transformation = Transformation::reflectionY;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) {
-        refreshBuffer();
-        transformation = Transformation::reflectionOrigin;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        refreshBuffer();
-        transformation = Transformation::shearX;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
-        refreshBuffer();
-        transformation = Transformation::shearY;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
-        refreshBuffer();
-        drawMode = DrawMode::floodFill;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_END) == GLFW_PRESS) {
-        transformation = Transformation::none;
-        transformationWindowCoordinates.clear();
-        refreshBuffer();
-    }
     else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
         if (listenForKeyboardInput) {
             if (transformation == Transformation::translation ||
@@ -469,25 +432,38 @@ void processKeyboardInput(GLFWwindow* window) {
                 transformation == Transformation::rotation ||
                 transformation == Transformation::shearX ||
                 transformation == Transformation::shearY) {
-                char* firstString = keyboardInput.data();
-                char* secondString = NULL;
-                for (int i = 0; i < keyboardInput.size(); ++i) {
-                    if (keyboardInput[i] == ' ') {
-                        keyboardInput[i] = '\0';
-                        secondString = &keyboardInput[i + 1];
-                        break;
-                    }
-                }
+                char* firstString = keyboardInput1.data();
+                char* secondString = keyboardInput2.data();
                 float x = (float)strtod(firstString, (char**)NULL);
-                float y = 0.0f;
-                if (secondString != NULL) {
-                    y = (float)strtod(secondString, (char**)NULL);
-                }
+                float y = (float)strtod(secondString, (char**)NULL);
                 processTransformation(x, y);
             }
             listenForKeyboardInput = false;
             clearCharacterBuffer();
         }
+    }
+    else if (glfwGetKey(window, GLFW_KEY_BACKSPACE) == GLFW_PRESS) {
+        if (!backSpaced && listenForKeyboardInput) {
+            if (keyboardInput2.size() == 1) {
+                spaced = false;
+            }
+            if (!spaced) {
+                if (keyboardInput1.size() > 1) {
+                    keyboardInput1.pop_back();
+                    keyboardInput1.pop_back();
+                    keyboardInput1.push_back('\0');
+                }
+            }
+            else {
+                keyboardInput2.pop_back();
+                keyboardInput2.pop_back();
+                keyboardInput2.push_back('\0');
+            }
+            backSpaced = true;
+        }
+    }
+    else if (glfwGetKey(window, GLFW_KEY_BACKSPACE) == GLFW_RELEASE) {
+        backSpaced = false;
     }
 }
 
@@ -498,10 +474,64 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     float x = (float)xpos, y = (float)ypos;
     normalizeCoordinates(&x, &y);
 
-    if (x > -0.125f || y < 0.425f) {
+    if (x > -0.125f || y < 0.425f || x < -0.95f || y > 0.95f) {
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
             insertCoordinates((float)xpos, (float)ypos);
         }
+    }
+    else if (x >= -0.90f && x <= -0.70f && y >= 0.75f && y <= 0.80f) {
+        refreshBuffer();
+        drawMode = DrawMode::line;
+    }
+    else if (x >= -0.90f && x <= -0.70f && y >= 0.675f && y <= 0.725f) {
+        refreshBuffer();
+        drawMode = DrawMode::polygon;
+    }
+    else if (x >= -0.90f && x <= -0.70f && y >= 0.60f && y <= 0.65f) {
+        refreshBuffer();
+        drawMode = DrawMode::floodFill;
+    }
+    else if (x >= -0.90f && x <= -0.70f && y >= 0.525f && y <= 0.575f) {
+        transformation = Transformation::none;
+        drawMode = DrawMode::none;
+        clearCoordinates();
+    }
+    else if (x >= -0.60f && x <= -0.40f && y >= 0.75f && y <= 0.80f) {
+        refreshBuffer();
+        transformation = Transformation::translation;
+    }
+    else if (x >= -0.375f && x <= -0.175f && y >= 0.75f && y <= 0.80f) {
+        refreshBuffer();
+        transformation = Transformation::rotation;
+    }
+    else if (x >= -0.60f && x <= -0.40f && y >= 0.675f && y <= 0.725f) {
+        refreshBuffer();
+        transformation = Transformation::reflectionX;
+    }
+    else if (x >= -0.375f && x <= -0.175f && y >= 0.675f && y <= 0.725f) {
+        refreshBuffer();
+        transformation = Transformation::reflectionY;
+    }
+    else if (x >= -0.60f && x <= -0.40f && y >= 0.60f && y <= 0.65f) {
+        refreshBuffer();
+        transformation = Transformation::reflectionOrigin;
+    }
+    else if (x >= -0.375f && x <= -0.175f && y >= 0.60f && y <= 0.65f) {
+        refreshBuffer();
+        transformation = Transformation::scaling;
+    }
+    else if (x >= -0.60f && x <= -0.40f && y >= 0.525f && y <= 0.575f) {
+        refreshBuffer();
+        transformation = Transformation::shearX;
+    }
+    else if (x >= -0.375f && x <= -0.175f && y >= 0.525f && y <= 0.575f) {
+        refreshBuffer();
+        transformation = Transformation::shearY;
+    }
+    else if (x >= -0.49f && x <= -0.29f && y >= 0.45f && y <= 0.50f) {
+        transformation = Transformation::none;
+        transformationWindowCoordinates.clear();
+        refreshBuffer();
     }
 }
 
@@ -510,16 +540,28 @@ void clearCoordinates() {
     polygonCoordinates.clear();
     polygonIndexes.clear();
     polygonIndexes.push_back(0);
-    filledPolygonCoordinates.clear();
     for (int i = 0; i < filledPolygonCoordinates.size(); ++i) {
         filledPolygonCoordinates[i]->clear();
         delete filledPolygonCoordinates[i];
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[i + 5]);
+        glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
+        glDeleteBuffers(1, &VAO[i + 5]);
+        glDeleteBuffers(1, &VBO[i + 5]);
     }
+    for (int i = 0; i < filledPolygonCoordinates.size(); ++i) {
+        VAO.pop_back();
+        VBO.pop_back();
+    }
+    filledPolygonCoordinates.clear();
     transformationWindowCoordinates.clear();
     for (int i = 0; i < VBO.size(); ++i) {
-        glBindBuffer(GL_ARRAY_BUFFER, VBO[i]);
-        glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
+        if (i != 3 && i != 4) {
+            glBindBuffer(GL_ARRAY_BUFFER, VBO[i]);
+            glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
+        }
     }
+    listenForKeyboardInput = false;
+    clearCharacterBuffer();
 }
 
 void refreshBuffer() {
@@ -538,6 +580,8 @@ void refreshBuffer() {
     // clean
     glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
     glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
+    listenForKeyboardInput = false;
+    clearCharacterBuffer();
 }
 
 void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
@@ -559,7 +603,7 @@ void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
         (x >= -0.90f && x <= -0.70f && y >= 0.75f && y <= 0.80f)) {
         glfwSetCursor(window, pointerCursor);
     }
-    else if (x <= -0.125f && y >= 0.425f) {
+    else if (x <= -0.125f && y >= 0.425f && x >= -0.95f && y <= 0.95f) {
         glfwSetCursor(window, defaultCursor);
     }
     else {
@@ -760,13 +804,25 @@ void insertCoordinates(float xpos, float ypos, bool temporary) {
 
 void characterCallback(GLFWwindow* window, unsigned int codepoint) {
     if (listenForKeyboardInput) {
-        keyboardInput.insert(--keyboardInput.end(), (char)codepoint);
+        if ((char)codepoint == ' ') {
+            spaced = true;
+        }
+        else if (!spaced) {
+            keyboardInput1.insert(--keyboardInput1.end(), (char)codepoint);
+        }
+        else {
+            keyboardInput2.insert(--keyboardInput2.end(), (char)codepoint);
+        }
+        
     }
 }
 
 void clearCharacterBuffer() {
-    keyboardInput.clear();
-    keyboardInput.push_back('\0');
+    keyboardInput1.clear();
+    keyboardInput2.clear();
+    keyboardInput1.push_back('\0');
+    keyboardInput2.push_back('\0');
+    spaced = false;
 }
 
 void processTransformation(float x, float y) {
