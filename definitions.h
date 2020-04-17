@@ -21,6 +21,13 @@ enum class Transformation : unsigned int {
     shearY
 };
 
+struct Character {
+    GLuint textureID;
+    glm::ivec2 size;
+    glm::ivec2 bearing;
+    GLuint advance;
+};
+
 // function declarations
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 void processKeyboardInput(GLFWwindow* window);
@@ -33,3 +40,4 @@ void clearCharacterBuffer();
 void processTransformation(float x = 0.0f, float y = 0.0f);
 void refreshBuffer();
 void normalizeCoordinates(float *x, float *y);
+void renderText(std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color);

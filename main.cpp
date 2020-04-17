@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <map>
 #include <algorithm>
 #include <math.h>
 #include <string.h>
@@ -9,12 +10,14 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <ft2build.h>
+#include FT_FREETYPE_H 
 #include "shaders.h"
 #include "definitions.h"
 
 // global variables
-unsigned int SCR_WIDTH = 640;
-unsigned int SCR_HEIGHT = 640;
+unsigned int SCR_WIDTH = 700;
+unsigned int SCR_HEIGHT = 700;
 
 DrawMode drawMode = DrawMode::line;
 Transformation transformation = Transformation::none;
@@ -28,7 +31,9 @@ std::vector<char> keyboardInput = { '\0' };
 
 std::vector<unsigned int> VBO;
 std::vector<unsigned int> VAO;
-unsigned int vertexShader, fragmentShader, shaderProgram;
+unsigned int vertexShader, fragmentShader, shaderProgram, textVertexShader, textFragmentShader, textShaderProgram;
+
+std::map<GLchar, Character> characters;
 
 bool listenForKeyboardInput = false;
 
@@ -38,6 +43,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
     // creating a window
     //GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Computer Graphics Simulator", glfwGetPrimaryMonitor(), NULL);
@@ -56,6 +62,9 @@ int main() {
         return -1;
     }
 
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     // cursor
     GLFWcursor* cursor = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
     glfwSetCursor(window, cursor);
@@ -69,11 +78,13 @@ int main() {
     VBO.push_back(0);
     VBO.push_back(0);
     VBO.push_back(0);
+    VBO.push_back(0);
     for (int i = 0; i < VBO.size(); ++i) {
         glGenBuffers(1, &VBO[i]);
     }
 
     // initialize vertex array object
+    VAO.push_back(0);
     VAO.push_back(0);
     VAO.push_back(0);
     VAO.push_back(0);
@@ -85,11 +96,17 @@ int main() {
     vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
     glCompileShader(vertexShader);
+    textVertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(textVertexShader, 1, &textVertexShaderSource, NULL);
+    glCompileShader(textVertexShader);
 
     // initialize fragment shader
     fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
     glCompileShader(fragmentShader);
+    textFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(textFragmentShader, 1, &textFragmentShaderSource, NULL);
+    glCompileShader(textFragmentShader);
 
     // initialize shader program
     shaderProgram = glCreateProgram();
@@ -98,15 +115,87 @@ int main() {
     glLinkProgram(shaderProgram);
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
+    textShaderProgram = glCreateProgram();
+    glAttachShader(textShaderProgram, textVertexShader);
+    glAttachShader(textShaderProgram, textFragmentShader);
+    glLinkProgram(textShaderProgram);
+    glDeleteShader(textVertexShader);
+    glDeleteShader(textFragmentShader);
 
     // bind VAO and VBO
     for (int i = 0; i < VAO.size(); ++i) {
         glBindVertexArray(VAO[i]);
         glBindBuffer(GL_ARRAY_BUFFER, VBO[i]);
-        glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
+        if (i == 3) { // different for text VBO
+            glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+        }
+        else {
+            glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
+        }
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        if (i == 3) { // different for text VAO
+            glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+        }
+        else {
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        }
     }
+
+    // text
+    FT_Library ft;
+    if (FT_Init_FreeType(&ft)) {
+        std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
+    }
+    FT_Face face;
+    if (FT_New_Face(ft, "fonts/Roboto/Roboto-Regular.ttf", 0, &face)) {
+        std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
+    }
+    // set font size
+    FT_Set_Pixel_Sizes(face, 0, 48);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    for (GLubyte c = 0; c < 128; c++)
+    {
+        // load character glyph 
+        if (FT_Load_Char(face, c, FT_LOAD_RENDER))
+        {
+            std::cout << "ERROR::FREETYTPE: Failed to load Glyph" << std::endl;
+            continue;
+        }
+        // generate texture
+        GLuint texture;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_RED,
+            face->glyph->bitmap.width,
+            face->glyph->bitmap.rows,
+            0,
+            GL_RED,
+            GL_UNSIGNED_BYTE,
+            face->glyph->bitmap.buffer
+        );
+        // set texture options
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        // now store character for later use
+        Character character = {
+            texture,
+            glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
+            glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
+            face->glyph->advance.x
+        };
+        characters.insert(std::pair<GLchar, Character>(c, character));
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+    // destroy FreeType once we're finished
+    FT_Done_Face(face);
+    FT_Done_FreeType(ft);
 
     while (!glfwWindowShouldClose(window)) {
         // process keyboard input
@@ -115,6 +204,10 @@ int main() {
         //render
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        // draw text
+        renderText("Test", 200.0f, -500.0f, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
+        renderText("Test 2", -600.0f, 600.0f, 1.0f, glm::vec3(0.5, 0.0f, 0.0f));
 
         // draw
         glUseProgram(shaderProgram);
@@ -125,9 +218,9 @@ int main() {
         glDrawArrays(GL_LINES, 0, (polygonCoordinates.size() / 3) + 2);
         glBindVertexArray(VAO[2]);
         glDrawArrays(GL_LINE_LOOP, 0, 4);
-        for (int i = 3; i < VAO.size(); ++i) {
+        for (int i = 4; i < VAO.size(); ++i) {
             glBindVertexArray(VAO[i]);
-            glDrawArrays(GL_TRIANGLE_FAN, 0, filledPolygonCoordinates[i - 3]->size() / 3);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, filledPolygonCoordinates[i - 4]->size() / 3);
         }
 
         // swap buffers and poll IO events
@@ -658,7 +751,7 @@ void processTransformation(float x, float y) {
         glBufferData(GL_ARRAY_BUFFER, sizeof(float) * polygonCoordinates.size(), &polygonCoordinates[0], GL_STATIC_DRAW);
     }
     for (int i = 0; i < filledPolygonCoordinates.size(); ++i) {
-        glBindBuffer(GL_ARRAY_BUFFER, VBO[i + 3]);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[i + 4]);
         glBufferData(GL_ARRAY_BUFFER, sizeof(float)* filledPolygonCoordinates[i]->size(), filledPolygonCoordinates[i]->data(), GL_STATIC_DRAW);
     }
 }
@@ -667,4 +760,48 @@ void normalizeCoordinates(float *x, float *y) {
     *x = (2.0f / (float)SCR_WIDTH) * *x - 1;
     // flip Y coordinate
     *y = -((2.0f / (float)SCR_HEIGHT) * *y - 1);
+}
+
+void renderText(std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color) {
+
+    glUseProgram(textShaderProgram);
+    glUniform3f(glGetUniformLocation(textShaderProgram, "textColor"), color.x, color.y, color.z);
+    glActiveTexture(GL_TEXTURE0);
+    glBindVertexArray(VAO[3]);
+
+    // iterate through all characters
+    std::string::const_iterator c;
+    for (c = text.begin(); c != text.end(); c++)
+    {
+        Character ch = characters[*c];
+
+        GLfloat xpos = x + ch.bearing.x * scale;
+        GLfloat ypos = y - (ch.size.y - ch.bearing.y) * scale;
+
+        GLfloat w = ch.size.x * scale;
+        GLfloat h = ch.size.y * scale;
+        // update VBO for each character
+        GLfloat vertices[6][4] = {
+            { xpos / SCR_WIDTH,     (ypos + h) / SCR_HEIGHT,   0.0, 0.0 },
+            { xpos / SCR_WIDTH,     ypos / SCR_HEIGHT,       0.0, 1.0 },
+            { (xpos + w) / SCR_WIDTH, ypos / SCR_HEIGHT,       1.0, 1.0 },
+
+            { xpos / SCR_WIDTH,     (ypos + h) / SCR_HEIGHT,   0.0, 0.0 },
+            { (xpos + w) / SCR_WIDTH, ypos / SCR_HEIGHT,       1.0, 1.0 },
+            { (xpos + w) / SCR_WIDTH, (ypos + h) / SCR_HEIGHT,   1.0, 0.0 }
+        };
+        // render glyph texture over quad
+        glBindTexture(GL_TEXTURE_2D, ch.textureID);
+        // update content of VBO memory
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[3]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices); // be sure to use glBufferSubData and not glBufferData
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        // render quad
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
+        x += (ch.advance >> 6)* scale; // bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
+    }
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
