@@ -22,6 +22,7 @@ unsigned int SCR_HEIGHT = 700;
 DrawMode drawMode = DrawMode::line;
 Transformation transformation = Transformation::none;
 
+std::vector<float> menuBoxCoordinates;
 std::vector<float> linesCoordinates;
 std::vector<float> polygonCoordinates;
 std::vector<int> polygonIndexes = { 0 };
@@ -75,19 +76,13 @@ int main() {
     glfwSetCharCallback(window, characterCallback);
 
     // initialize vertex buffer object
-    VBO.push_back(0);
-    VBO.push_back(0);
-    VBO.push_back(0);
-    VBO.push_back(0);
+    VBO.assign({ 0, 0, 0, 0, 0 });
     for (int i = 0; i < VBO.size(); ++i) {
         glGenBuffers(1, &VBO[i]);
     }
 
     // initialize vertex array object
-    VAO.push_back(0);
-    VAO.push_back(0);
-    VAO.push_back(0);
-    VAO.push_back(0);
+    VAO.assign({ 0, 0, 0, 0, 0 });
     for (int i = 0; i < VAO.size(); ++i) {
         glGenVertexArrays(1, &VAO[i]);
     }
@@ -197,6 +192,22 @@ int main() {
     FT_Done_Face(face);
     FT_Done_FreeType(ft);
 
+    // initialize box coordinates
+    menuBoxCoordinates.assign({
+        -0.95f, 0.95f, 0.0f,
+        -0.75f, 0.95f, 0.0f,
+        -0.75f, 0.95f, 0.0f,
+        -0.75f, 0.75f, 0.0f,
+        -0.75f, 0.75f, 0.0f,
+        -0.95f, 0.75f, 0.0f,
+        -0.95f, 0.75f, 0.0f,
+        -0.95f, 0.95f, 0.0f
+    });
+
+    // box buffer data
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[4]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * menuBoxCoordinates.size(), &menuBoxCoordinates[0], GL_STATIC_DRAW);
+
     while (!glfwWindowShouldClose(window)) {
         // process keyboard input
         processKeyboardInput(window);
@@ -211,16 +222,20 @@ int main() {
 
         // draw
         glUseProgram(shaderProgram);
-
-        glBindVertexArray(VAO[0]);
+        int i = 0;
+        glBindVertexArray(VAO[i++]);
         glDrawArrays(GL_LINES, 0, (linesCoordinates.size() / 3) + 1);
-        glBindVertexArray(VAO[1]);
+        glBindVertexArray(VAO[i++]);
         glDrawArrays(GL_LINES, 0, (polygonCoordinates.size() / 3) + 2);
-        glBindVertexArray(VAO[2]);
+        glBindVertexArray(VAO[i++]);
         glDrawArrays(GL_LINE_LOOP, 0, 4);
-        for (int i = 4; i < VAO.size(); ++i) {
-            glBindVertexArray(VAO[i]);
-            glDrawArrays(GL_TRIANGLE_FAN, 0, filledPolygonCoordinates[i - 4]->size() / 3);
+
+        glBindVertexArray(VAO[i++]);
+        glDrawArrays(GL_LINES, 0, menuBoxCoordinates.size() / 3);
+
+        for (int j = i; j < VAO.size(); ++j) {
+            glBindVertexArray(VAO[j]);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, filledPolygonCoordinates[j - i]->size() / 3);
         }
 
         // swap buffers and poll IO events
@@ -751,7 +766,7 @@ void processTransformation(float x, float y) {
         glBufferData(GL_ARRAY_BUFFER, sizeof(float) * polygonCoordinates.size(), &polygonCoordinates[0], GL_STATIC_DRAW);
     }
     for (int i = 0; i < filledPolygonCoordinates.size(); ++i) {
-        glBindBuffer(GL_ARRAY_BUFFER, VBO[i + 4]);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[i + 5]);
         glBufferData(GL_ARRAY_BUFFER, sizeof(float)* filledPolygonCoordinates[i]->size(), filledPolygonCoordinates[i]->data(), GL_STATIC_DRAW);
     }
 }
